@@ -17,8 +17,11 @@ numpy>=1.24.0
 # ultralytics>=8.0.0        # uncomment if using local YOLO weights
 
 # OCR (preferred)
-paddlepaddle>=2.6.0
-paddleocr>=2.7.0
+# NOTE: On Jetson (ARM64) do NOT install paddlepaddle from PyPI – the PyPI wheel
+# is x86-only.  Use the Jetson-specific GPU wheel from the Dockerfile instead.
+# PaddlePaddle >=3.0.0 is required for JetPack 6.x (CUDA 12.6 / cuDNN 9.x).
+paddlepaddle>=3.0.0
+paddleocr>=2.9.0
 
 # OCR (fallback)
 pytesseract>=0.3.10

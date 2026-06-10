@@ -1,6 +1,8 @@
 # imagoVisionOCR
 
-Production-grade edge AI OCR inspection system running on an **Imago XM2 (NVIDIA Jetson)**.
+Production-grade edge AI OCR inspection system for the **Imago XM2** — an all-in-one industrial smart camera with a **NVIDIA Jetson Orin Nano Super** edge computer built in.
+
+The XM2 is a self-contained unit: camera sensor, image processing, GPU inference, and storage run inside the same enclosure with no external PC required. This software runs entirely on the XM2 itself.
 
 Captures images from an industrial camera trigger, detects and normalises the print area geometry, performs OCR, validates extracted text against configurable rules, archives results, and exposes a live web UI.
 
@@ -41,16 +43,19 @@ Trigger Event
 
 ## Requirements
 
-- Python 3.10+
-- NVIDIA Jetson Orin (ARM64) with JetPack 6.x and CUDA
-- Camera accessible via XM2 SDK, V4L2 (`/dev/video*`), or GStreamer pipeline
+- **Hardware**: Imago XM2 smart camera (Jetson Orin Nano Super, ARM64, built-in)
+- **Software**: JetPack 6.x (L4T r36.x) — pre-installed on the XM2 by Imago
+- **Python**: 3.10+ (pre-installed with JetPack)
+- **Camera access**: Via `xm2sdk` (Imago vendor SDK, pre-installed on the device). OpenCV/GStreamer fallbacks are available for development/testing on non-XM2 hardware only.
 
 ---
 
 ## Installation
 
+> **Note:** The XM2 is an all-in-one unit. All commands below run directly on the XM2 over SSH or a connected terminal. No separate host PC is needed. See [GETTING_STARTED.md](GETTING_STARTED.md) for a full step-by-step setup guide.
+
 ```bash
-# Clone
+# Clone onto the XM2
 git clone https://github.com/daniel-SCAU/imagoVisionOCR
 cd imagoVisionOCR
 
@@ -59,8 +64,10 @@ pip install -r requirements.txt
 
 # Copy example config
 cp config.example.json config.json
-# Edit config.json — set detection credentials, storage path, validation rules
+# Edit config.json — set roboflow_model_path / yolo_weights, storage path, validation rules
 ```
+
+The `xm2sdk` vendor package is pre-installed on the XM2 by Imago and does not need to be installed separately. Set `"use_xm2_sdk": true` (the default) to use it.
 
 For **Roboflow** local detection, set `roboflow_model_path` to the path of your local model files in `config.json`.
 For **local YOLO**, set `detection_model` to `"yolo"` and provide `yolo_weights`.
@@ -120,10 +127,12 @@ Key fields in `config.json` / SQLite:
 
 ---
 
-## Docker Deployment (Jetson ARM64)
+## Docker Deployment (on the XM2)
+
+The Docker image targets L4T r36.x (JetPack 6.x / CUDA 12.x) which ships on the XM2.
 
 ```bash
-# Build and run
+# Build and run directly on the XM2
 docker compose up --build -d
 
 # Logs
@@ -163,3 +172,8 @@ JSON metadata example:
 }
 ```
 
+---
+
+## Getting Started Guide
+
+For a full step-by-step setup guide — including first boot, SDK verification, model deployment, config tuning, and auto-start — see **[GETTING_STARTED.md](GETTING_STARTED.md)**.
