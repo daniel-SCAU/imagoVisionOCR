@@ -42,17 +42,26 @@ COPY requirements.txt .
 #       x86-only. Swap the URL below for the exact JetPack/CUDA version in use.
 RUN pip3 install --upgrade pip setuptools wheel && \
     pip3 install \
-        numpy>=1.24.0 \
-        "opencv-python>=4.8.0" \
+        "numpy>=1.24.0" \
         "fastapi>=0.110.0" \
         "uvicorn[standard]>=0.29.0" \
         "pydantic>=2.0.0" \
         "nicegui>=1.4.0" \
         "smbprotocol>=1.12.0" \
         "pytesseract>=0.3.10" \
-        "python-multipart>=0.0.9" && \
-    pip3 install paddlepaddle paddleocr || \
-        echo "WARNING: paddlepaddle/paddleocr install failed; use Jetson-specific wheel"
+        "python-multipart>=0.0.9"
+# NOTE: opencv-python is intentionally omitted above.  The L4T base image
+# ships a CUDA-enabled OpenCV build; installing the PyPI wheel would replace
+# it with a CPU-only build and break GPU-accelerated vision pipelines.
+
+# Install PaddlePaddle for Jetson (CUDA 12.6 / cuDNN 9.x / ARM64 / JetPack 6.1).
+# The generic PyPI wheel is x86-only and does not support CUDA 12.6/cuDNN 9.x.
+# Verify the URL at: https://www.paddlepaddle.org.cn/install/quick?docurl=/documentation/docs/en/install/pip/linux-pip_en.html
+# and select: Linux · Python 3.10 · CUDA 12.6 · Jetson / aarch64.
+RUN pip3 install \
+        "https://paddle-inference-lib.bj.bcebos.com/3.0.0/python3.10/Jetson/jetpack6.1_aarch64/paddlepaddle_gpu-3.0.0-cp310-cp310-linux_aarch64.whl" \
+        "paddleocr>=2.9.0" || \
+    echo "WARNING: paddlepaddle/paddleocr install failed; verify the wheel URL above"
 
 # Optional: Ultralytics YOLOv8
 # RUN pip3 install ultralytics>=8.0.0
