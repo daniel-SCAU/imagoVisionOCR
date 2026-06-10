@@ -1,4 +1,20 @@
 #!/usr/bin/env python3
+# ──────────────────────────────────────────────────────────────────────────────
+# DEPRECATED – Legacy fixed-ROI single-file application
+#
+# This file is the original proof-of-concept implementation that relies on
+# fixed Region-Of-Interest (ROI) coordinates and Tesseract OCR directly from
+# the raw camera image.  It does NOT perform object detection or geometric
+# normalisation and therefore does NOT meet the production requirements for the
+# XM2 Jetson conveyor inspection system.
+#
+# Use ``app/main.py`` for the production system, which implements the full
+# modular pipeline:
+#   capture → object detection → geometry normalisation → PaddleOCR → validate
+#
+# This file is kept only for historical reference and will be removed in a
+# future release.
+# ──────────────────────────────────────────────────────────────────────────────
 from __future__ import annotations
 
 import argparse

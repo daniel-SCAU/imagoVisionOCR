@@ -3,8 +3,9 @@ Camera abstraction layer for the Imago XM2 (Jetson-based) system.
 
 Priority order:
   1. XM2 vendor SDK  (imported as ``xm2sdk`` if available)
-  2. GStreamer pipeline via OpenCV (for Jetson CSI / V4L2 / GigE cameras)
-  3. Plain OpenCV VideoCapture fallback
+  2. GenICam via Harvester (``harvesters`` package, optional)
+  3. GStreamer pipeline via OpenCV (for Jetson CSI / V4L2 / GigE cameras)
+  4. Plain OpenCV VideoCapture fallback
 """
 from __future__ import annotations
 
@@ -24,6 +25,14 @@ try:
 except ImportError:
     pass
 
+_HARVESTER_AVAILABLE = False
+try:
+    from harvesters.core import Harvester  # type: ignore[import]
+
+    _HARVESTER_AVAILABLE = True
+except ImportError:
+    pass
+
 _BACKEND_MAP: dict[str, int] = {
     "any": cv2.CAP_ANY,
     "v4l2": cv2.CAP_V4L2,
@@ -34,7 +43,17 @@ _BACKEND_MAP: dict[str, int] = {
 
 class CameraInterface:
     """
-    Unified camera interface that supports both the XM2 vendor SDK and OpenCV.
+    Unified camera interface that supports the XM2 vendor SDK, GenICam via
+    Harvester, and OpenCV (GStreamer or plain V4L2/DirectShow).
+
+    Backend selection order (first available wins unless overridden):
+      1. XM2 vendor SDK  – when ``use_xm2_sdk: true`` (default) and ``xm2sdk``
+                           is importable.
+      2. GenICam/Harvester – when ``use_genicam: true`` and ``harvesters`` is
+                             installed.  Requires a valid ``.cti`` producer file
+                             path in ``genicam_cti``.
+      3. OpenCV            – GStreamer pipeline if ``gstreamer_pipeline`` is set,
+                             otherwise plain VideoCapture.
 
     Usage::
 
@@ -50,7 +69,14 @@ class CameraInterface:
         self._config = config
         self._capture: cv2.VideoCapture | None = None
         self._xm2_device: Any = None
+        self._harvester: Any = None          # Harvester instance
+        self._h_acquirer: Any = None         # ImageAcquirer from Harvester
         self._use_sdk = _XM2_SDK_AVAILABLE and config.get("use_xm2_sdk", True)
+        self._use_genicam = (
+            not self._use_sdk
+            and _HARVESTER_AVAILABLE
+            and bool(config.get("use_genicam", False))
+        )
         self._trigger_enabled = False
 
     # ------------------------------------------------------------------
@@ -58,12 +84,16 @@ class CameraInterface:
     # ------------------------------------------------------------------
 
     def connect(self) -> None:
-        """Open connection to the camera (SDK or OpenCV)."""
+        """Open connection to the camera (SDK, GenICam/Harvester, or OpenCV)."""
         if self._use_sdk:
             self._connect_xm2()
+        elif self._use_genicam:
+            self._connect_harvester()
         else:
             self._connect_opencv()
-        logger.info("Camera connected (sdk=%s)", self._use_sdk)
+        logger.info(
+            "Camera connected (sdk=%s, genicam=%s)", self._use_sdk, self._use_genicam
+        )
 
     def disconnect(self) -> None:
         """Release all camera resources."""
@@ -73,6 +103,19 @@ class CameraInterface:
             except Exception:
                 pass
             self._xm2_device = None
+        if self._h_acquirer is not None:
+            try:
+                self._h_acquirer.stop_acquisition()
+                self._h_acquirer.destroy()
+            except Exception:
+                pass
+            self._h_acquirer = None
+        if self._harvester is not None:
+            try:
+                self._harvester.reset()
+            except Exception:
+                pass
+            self._harvester = None
         if self._capture is not None:
             self._capture.release()
             self._capture = None
@@ -90,16 +133,29 @@ class CameraInterface:
                 self._xm2_device.set_trigger_mode(enabled)
             except Exception as exc:
                 logger.warning("set_trigger_mode SDK error: %s", exc)
+        elif self._use_genicam and self._h_acquirer is not None:
+            try:
+                node_map = self._h_acquirer.remote_device.node_map
+                node_map.TriggerMode.value = "On" if enabled else "Off"
+            except Exception as exc:
+                logger.warning("set_trigger_mode GenICam error: %s", exc)
         logger.debug("Trigger mode set to %s", enabled)
 
     def set_exposure(self, value: int) -> None:
-        """Set camera exposure (µs for SDK; OpenCV units for fallback)."""
+        """Set camera exposure (µs for SDK/GenICam; OpenCV units for fallback)."""
         if self._use_sdk and self._xm2_device is not None:
             try:
                 self._xm2_device.set_exposure(value)
                 return
             except Exception as exc:
                 logger.warning("set_exposure SDK error: %s", exc)
+        elif self._use_genicam and self._h_acquirer is not None:
+            try:
+                node_map = self._h_acquirer.remote_device.node_map
+                node_map.ExposureTime.value = float(value)
+                return
+            except Exception as exc:
+                logger.warning("set_exposure GenICam error: %s", exc)
         if self._capture is not None:
             self._capture.set(cv2.CAP_PROP_EXPOSURE, float(value))
 
@@ -117,8 +173,9 @@ class CameraInterface:
 
         Args:
             trigger: If True and trigger mode is active, wait for hardware
-                     trigger before grabbing (SDK path).  Ignored by OpenCV
-                     fallback which always reads the next available frame.
+                     trigger before grabbing (SDK / GenICam paths).  Ignored
+                     by the OpenCV fallback which always reads the next
+                     available frame.
 
         Returns:
             BGR image as ``np.ndarray``.
@@ -128,6 +185,8 @@ class CameraInterface:
         """
         if self._use_sdk and self._xm2_device is not None:
             return self._capture_xm2(trigger)
+        if self._use_genicam and self._h_acquirer is not None:
+            return self._capture_harvester()
         return self._capture_opencv()
 
     # ------------------------------------------------------------------
@@ -162,6 +221,60 @@ class CameraInterface:
             return cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) if frame.ndim == 3 else frame
         except Exception as exc:
             raise RuntimeError(f"XM2 SDK frame capture error: {exc}") from exc
+
+    # ------------------------------------------------------------------
+    # Private – GenICam / Harvester path
+    # ------------------------------------------------------------------
+
+    def _connect_harvester(self) -> None:
+        cti_file = self._config.get("genicam_cti", "")
+        if not cti_file:
+            logger.warning(
+                "GenICam/Harvester selected but 'genicam_cti' not set in config; "
+                "falling back to OpenCV."
+            )
+            self._use_genicam = False
+            self._connect_opencv()
+            return
+        try:
+            self._harvester = Harvester()
+            self._harvester.add_file(cti_file)
+            self._harvester.update()
+            self._h_acquirer = self._harvester.create_image_acquirer(0)
+            self._h_acquirer.start_acquisition()
+            logger.info("GenICam/Harvester connected via CTI: %s", cti_file)
+        except Exception as exc:
+            logger.warning(
+                "Harvester connect failed (%s); falling back to OpenCV.", exc
+            )
+            self._use_genicam = False
+            if self._harvester is not None:
+                try:
+                    self._harvester.reset()
+                except Exception:
+                    pass
+                self._harvester = None
+            self._h_acquirer = None
+            self._connect_opencv()
+
+    def _capture_harvester(self) -> np.ndarray:
+        try:
+            with self._h_acquirer.fetch_buffer() as buf:
+                component = buf.payload.components[0]
+                width = component.width
+                height = component.height
+                data = component.data.reshape(height, width, -1)
+                frame = np.array(data, dtype=np.uint8)
+                # GenICam typically delivers Mono8 or BayerRG8; convert to BGR
+                if frame.ndim == 2 or frame.shape[2] == 1:
+                    frame = cv2.cvtColor(
+                        frame.squeeze(), cv2.COLOR_GRAY2BGR
+                    )
+                elif frame.shape[2] == 3:
+                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                return frame
+        except Exception as exc:
+            raise RuntimeError(f"Harvester frame capture error: {exc}") from exc
 
     # ------------------------------------------------------------------
     # Private – OpenCV path

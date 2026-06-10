@@ -143,11 +143,26 @@ class ObjectDetector:
                 if conf < self._threshold:
                     continue
                 x, y, w, h = _center_to_xywh(pred.x, pred.y, pred.width, pred.height)
+
+                # Extract 4-corner polygon when the model returns instance/keypoint data.
+                # Roboflow polygon predictions expose a ``points`` attribute (list of
+                # objects with ``.x`` / ``.y`` properties).  We sample exactly 4 corners
+                # so the geometry module can use the preferred homography path.
+                points: list[list[int]] = []
+                raw_pts = getattr(pred, "points", None)
+                if raw_pts and len(raw_pts) >= 4:
+                    sampled = _sample_4_corners(
+                        [[int(p.x), int(p.y)] for p in raw_pts]
+                    )
+                    if sampled:
+                        points = sampled
+
                 detections.append(
                     Detection(
                         class_name=pred.class_name,
                         confidence=conf,
                         bbox=(x, y, w, h),
+                        points=points,
                     )
                 )
             return detections
@@ -170,6 +185,27 @@ class ObjectDetector:
                 boxes = result.boxes
                 if boxes is None:
                     continue
+
+                # Pre-build per-index polygon lookup from segmentation masks (YOLOv8-seg)
+                # or oriented bounding boxes (YOLOv8-obb).
+                seg_points: dict[int, list[list[int]]] = {}
+                if result.masks is not None:
+                    # result.masks.xy is a list (one per detection) of (N,2) float arrays
+                    for idx, poly in enumerate(result.masks.xy):
+                        if poly is not None and len(poly) >= 4:
+                            sampled = _sample_4_corners(
+                                [[int(p[0]), int(p[1])] for p in poly]
+                            )
+                            if sampled:
+                                seg_points[idx] = sampled
+                elif result.obb is not None:
+                    # result.obb.xyxyxyxy shape: (N, 4, 2)
+                    try:
+                        for idx, corners in enumerate(result.obb.xyxyxyxy):
+                            seg_points[idx] = [[int(p[0]), int(p[1])] for p in corners]
+                    except Exception:
+                        pass
+
                 for i, box in enumerate(boxes):
                     conf = float(box.conf[0])
                     cls_id = int(box.cls[0])
@@ -180,12 +216,51 @@ class ObjectDetector:
                             class_name=class_name,
                             confidence=conf,
                             bbox=(x1, y1, x2 - x1, y2 - y1),
+                            points=seg_points.get(i, []),
                         )
                     )
             return detections
         except Exception as exc:
             logger.error("YOLO inference error: %s", exc)
             return []
+
+
+def _sample_4_corners(points: list[list[int]]) -> list[list[int]]:
+    """
+    Reduce an arbitrary polygon to exactly 4 corner points suitable for a
+    homography transform.
+
+    Strategy:
+      * If the polygon already has exactly 4 points, return them as-is.
+      * Otherwise find the 4 points that are geometrically closest to the
+        corners of the polygon's axis-aligned bounding box (top-left,
+        top-right, bottom-right, bottom-left order).
+
+    Returns an empty list if *points* has fewer than 4 entries.
+    """
+    if len(points) < 4:
+        return []
+    if len(points) == 4:
+        return points
+
+    import math
+
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    min_x, max_x = min(xs), max(xs)
+    min_y, max_y = min(ys), max(ys)
+
+    corners_ref = [
+        (min_x, min_y),  # top-left
+        (max_x, min_y),  # top-right
+        (max_x, max_y),  # bottom-right
+        (min_x, max_y),  # bottom-left
+    ]
+    result: list[list[int]] = []
+    for rx, ry in corners_ref:
+        best = min(points, key=lambda p: math.hypot(p[0] - rx, p[1] - ry))
+        result.append(best)
+    return result
 
 
 def _cuda_available() -> bool:
