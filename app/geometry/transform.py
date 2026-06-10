@@ -138,7 +138,7 @@ def normalize_print_area(
                 warped = cv2.warpPerspective(image, H, (tw, th))
                 return warped
         except Exception as exc:
-            logger.warning("Homography failed: %s; using minAreaRect fallback", exc)
+            logger.warning("Homography failed; using minAreaRect fallback", exc_info=True)
 
     # ── Option 2: minAreaRect rotation + crop ────────────────────────────
     x, y, w, h = detection.bbox

@@ -79,8 +79,12 @@ async def get_status() -> dict[str, Any]:
 async def get_config() -> dict[str, Any]:
     """Return the current merged configuration."""
     cfg = load_config()
-    # Never expose credentials in the API response
-    safe = {k: v for k, v in cfg.items() if "password" not in k.lower() and "key" not in k.lower()}
+    # Use an allowlist for safe config keys to avoid leaking any credential variants
+    _SENSITIVE_SUBSTRINGS = {"password", "key", "secret", "token", "credential"}
+    safe = {
+        k: v for k, v in cfg.items()
+        if not any(s in k.lower() for s in _SENSITIVE_SUBSTRINGS)
+    }
     return safe
 
 

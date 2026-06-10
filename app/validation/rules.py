@@ -91,7 +91,8 @@ def validate_text(
             matched = compare_text == compare_pattern
         details[field] = matched
         if not matched:
-            failures.append(f"{field!r}: expected {pattern!r}, got {text!r}")
+            truncated = text[:50] + ("..." if len(text) > 50 else "")
+            failures.append(f"{field!r}: expected {pattern!r}, got {truncated!r}")
 
     passed = len(failures) == 0
     reason = "; ".join(failures) if failures else "All rules matched"
@@ -133,8 +134,9 @@ def validate_fields(
 
         details[field] = matched
         if not matched:
+            truncated = extracted[:50] + ("..." if len(extracted) > 50 else "")
             failures.append(
-                f"{field!r}: expected {pattern!r}, got {extracted!r}"
+                f"{field!r}: expected {pattern!r}, got {truncated!r}"
             )
 
     passed = len(failures) == 0

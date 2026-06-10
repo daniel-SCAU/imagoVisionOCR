@@ -29,6 +29,11 @@ class Detection:
     points: list[list[int]] = field(default_factory=list)  # optional 4-corner polygon
 
 
+def _center_to_xywh(cx: float, cy: float, w: float, h: float) -> tuple[int, int, int, int]:
+    """Convert center-x, center-y, width, height to top-left x, y, width, height."""
+    return int(cx - w / 2), int(cy - h / 2), int(w), int(h)
+
+
 class ObjectDetector:
     """
     Unified detector.  Backend is selected at construction time based on config.
@@ -137,10 +142,7 @@ class ObjectDetector:
                 conf = float(pred.confidence)
                 if conf < self._threshold:
                     continue
-                x = int(pred.x - pred.width / 2)
-                y = int(pred.y - pred.height / 2)
-                w = int(pred.width)
-                h = int(pred.height)
+                x, y, w, h = _center_to_xywh(pred.x, pred.y, pred.width, pred.height)
                 detections.append(
                     Detection(
                         class_name=pred.class_name,

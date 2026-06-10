@@ -104,6 +104,7 @@ class OCRReader:
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         gray = clahe.apply(gray)
 
+        # Laplacian-based sharpening kernel: amplifies centre pixel, suppresses neighbours
         kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]], dtype=np.float32)
         gray = cv2.filter2D(gray, -1, kernel)
 
