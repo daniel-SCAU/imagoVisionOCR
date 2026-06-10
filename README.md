@@ -29,7 +29,7 @@ pip install -r requirements.txt
 Copy and edit the example configuration:
 
 ```bash
-cp /home/runner/work/imagoVisionOCR/imagoVisionOCR/daniel-SCAU/imagoVisionOCR/config.example.json /home/runner/work/imagoVisionOCR/imagoVisionOCR/daniel-SCAU/imagoVisionOCR/config.json
+cp config.example.json config.json
 ```
 
 Important fields:
@@ -46,19 +46,19 @@ Important fields:
 One-shot trigger:
 
 ```bash
-python /home/runner/work/imagoVisionOCR/imagoVisionOCR/daniel-SCAU/imagoVisionOCR/imago_vision_ocr_app.py --config /home/runner/work/imagoVisionOCR/imagoVisionOCR/daniel-SCAU/imagoVisionOCR/config.json --once
+python imago_vision_ocr_app.py --config config.json --once
 ```
 
 Interactive trigger (press Enter each capture):
 
 ```bash
-python /home/runner/work/imagoVisionOCR/imagoVisionOCR/daniel-SCAU/imagoVisionOCR/imago_vision_ocr_app.py --config /home/runner/work/imagoVisionOCR/imagoVisionOCR/daniel-SCAU/imagoVisionOCR/config.json
+python imago_vision_ocr_app.py --config config.json
 ```
 
 Timed trigger:
 
 ```bash
-python /home/runner/work/imagoVisionOCR/imagoVisionOCR/daniel-SCAU/imagoVisionOCR/imago_vision_ocr_app.py --config /home/runner/work/imagoVisionOCR/imagoVisionOCR/daniel-SCAU/imagoVisionOCR/config.json --interval 2.0
+python imago_vision_ocr_app.py --config config.json --interval 2.0
 ```
 
 ## Output
