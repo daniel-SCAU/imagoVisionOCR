@@ -15,7 +15,7 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     "camera_exposure": 2000,
     "ocr_engine": "paddleocr",
     "detection_model": "roboflow",
-    "roboflow_api_key": "",
+    "roboflow_model_path": "",
     "roboflow_project": "",
     "roboflow_version": 1,
     "yolo_weights": "yolov8n.pt",

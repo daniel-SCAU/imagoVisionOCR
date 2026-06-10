@@ -14,7 +14,7 @@
   "genicam_device_index": 0,
 
   "detection_model": "roboflow",
-  "roboflow_api_key": "YOUR_API_KEY",
+  "roboflow_model_path": "/path/to/local/model",
   "roboflow_project": "YOUR_PROJECT_ID",
   "roboflow_version": 1,
   "yolo_weights": "yolov8n.pt",

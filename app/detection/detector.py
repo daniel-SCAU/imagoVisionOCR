@@ -40,8 +40,8 @@ class ObjectDetector:
 
     config keys:
       detection_model       – "roboflow" | "yolo"
-      roboflow_api_key      – Roboflow API key (Option A)
-      roboflow_project      – Roboflow project ID
+      roboflow_model_path   – path to a local Roboflow model directory (Option A)
+      roboflow_project      – project ID used as model_id when no model path is set
       roboflow_version      – model version integer
       yolo_weights          – path or model name, e.g. "yolov8n.pt" (Option B)
       confidence_threshold  – minimum confidence to keep a detection
@@ -86,24 +86,29 @@ class ObjectDetector:
             self._load_yolo()
 
     def _load_roboflow(self) -> None:
-        api_key = self._config.get("roboflow_api_key", "")
-        project = self._config.get("roboflow_project", "")
+        model_path = str(self._config.get("roboflow_model_path", "")).strip()
+        project = str(self._config.get("roboflow_project", "")).strip()
         version = int(self._config.get("roboflow_version", 1))
 
-        if not api_key or not project:
+        # Prefer an explicit local path; fall back to project/version (local cache).
+        if model_path:
+            model_id = model_path
+        elif project:
+            model_id = f"{project}/{version}"
+        else:
             logger.warning(
-                "Roboflow credentials not set; detector will return empty results. "
-                "Set roboflow_api_key and roboflow_project in config."
+                "No local Roboflow model configured; detector will return empty results. "
+                "Set roboflow_model_path in config to point to local model files."
             )
             return
 
         try:
             from inference import get_roboflow_model  # type: ignore[import]
 
-            self._model = get_roboflow_model(
-                model_id=f"{project}/{version}", api_key=api_key
-            )
-            logger.info("Roboflow model loaded: %s/%s", project, version)
+            # Load from local files only – no API key is passed so no cloud
+            # request is made.  The model weights must be present on disk.
+            self._model = get_roboflow_model(model_id=model_id)
+            logger.info("Roboflow model loaded locally: %s", model_id)
         except ImportError:
             logger.warning(
                 "inference package not installed; falling back to YOLOv8 local model."
