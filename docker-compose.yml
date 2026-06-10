@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        L4T_VERSION: "r35.4.1"
+        L4T_VERSION: "r36.4.0"
     image: xm2-ocr:latest
     container_name: xm2-ocr
     restart: unless-stopped
@@ -17,7 +17,8 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=all
 
-    # Expose camera device (V4L2 or USB camera)
+    # Expose integrated XM2 camera device (xm2sdk uses /dev/video0 internally;
+    # add additional /dev/video* entries if multiple camera streams are active)
     devices:
       - /dev/video0:/dev/video0
 

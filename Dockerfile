@@ -1,8 +1,9 @@
 # ──────────────────────────────────────────────────────────────────────────────
 # Dockerfile – XM2 OCR Inspection System
-# Target: NVIDIA Jetson (ARM64) with JetPack 5.x / L4T base image
+# Target: Imago XM2 all-in-one smart camera (Jetson Orin Nano Super, ARM64)
+#         Base image: NVIDIA L4T r36.x = JetPack 6.x, CUDA 12.x
 # ──────────────────────────────────────────────────────────────────────────────
-ARG L4T_VERSION=r35.4.1
+ARG L4T_VERSION=r36.4.0
 FROM nvcr.io/nvidia/l4t-ml:${L4T_VERSION}-py3 AS base
 
 LABEL maintainer="imago-xm2-ocr" \
@@ -36,7 +37,7 @@ WORKDIR /app
 
 COPY requirements.txt .
 
-# Install PaddlePaddle for Jetson (CUDA 11.x / ARM64)
+# Install PaddlePaddle for Jetson (CUDA 12.x / ARM64 / JetPack 6.x)
 # Note: Use the Jetson-specific wheel from paddle. The generic PyPI wheel is
 #       x86-only. Swap the URL below for the exact JetPack/CUDA version in use.
 RUN pip3 install --upgrade pip setuptools wheel && \
