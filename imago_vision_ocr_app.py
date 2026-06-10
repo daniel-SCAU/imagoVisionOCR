@@ -6,7 +6,7 @@ import json
 import re
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -181,7 +181,7 @@ def process_trigger(
     image_format = str(storage.get("image_format", "jpg")).lower()
     jpeg_quality = int(storage.get("jpeg_quality", 95))
     save_roi_images = bool(storage.get("save_roi_images", True))
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
 
     capture_name = output_dir / f"capture_{timestamp}.{image_format}"
     save_image(capture_name, frame, image_format=image_format, jpeg_quality=jpeg_quality)
