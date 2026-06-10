@@ -285,19 +285,20 @@ def main() -> int:
             print_result(process_trigger(capture, config, rois, remote_folder))
             return 0
 
-        if mode == "interval":
+        elif mode == "interval":
             interval = float(trigger_cfg.get("interval_seconds", 1.0))
             while True:
                 print_result(process_trigger(capture, config, rois, remote_folder))
                 time.sleep(max(DEFAULT_MIN_INTERVAL_SECONDS, interval))
 
-        if mode == "stdin":
+        elif mode == "stdin":
             print("Press Enter to trigger capture, Ctrl+C to exit.")
             while True:
                 input()
                 print_result(process_trigger(capture, config, rois, remote_folder))
 
-        raise ValueError(f"Unsupported trigger mode: {mode}")
+        else:
+            raise ValueError(f"Unsupported trigger mode: {mode}")
     except KeyboardInterrupt:
         return 0
     finally:
