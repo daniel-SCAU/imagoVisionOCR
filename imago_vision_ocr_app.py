@@ -181,9 +181,9 @@ def process_trigger(
     image_format = str(storage.get("image_format", "jpg")).lower()
     jpeg_quality = int(storage.get("jpeg_quality", 95))
     save_roi_images = bool(storage.get("save_roi_images", True))
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
+    timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
 
-    capture_name = output_dir / f"capture_{timestamp}.{image_format}"
+    capture_name = output_dir / f"capture_{timestamp_str}.{image_format}"
     save_image(capture_name, frame, image_format=image_format, jpeg_quality=jpeg_quality)
 
     img_h, img_w = frame.shape[:2]
@@ -200,7 +200,7 @@ def process_trigger(
         all_match = all_match and matched
 
         if save_roi_images:
-            roi_name = output_dir / f"roi_{roi.name}_{timestamp}.{image_format}"
+            roi_name = output_dir / f"roi_{roi.name}_{timestamp_str}.{image_format}"
             save_image(roi_name, crop, image_format=image_format, jpeg_quality=jpeg_quality)
 
         roi_results.append(
@@ -219,14 +219,14 @@ def process_trigger(
         )
 
     result = {
-        "timestamp_utc": timestamp,
+        "timestamp_utc": timestamp_str,
         "capture_image": str(capture_name),
         "all_match": all_match,
         "rois": roi_results,
     }
 
     if storage.get("save_report", True):
-        report_path = output_dir / f"report_{timestamp}.json"
+        report_path = output_dir / f"report_{timestamp_str}.json"
         with report_path.open("w", encoding="utf-8") as f:
             json.dump(result, f, indent=2)
 
