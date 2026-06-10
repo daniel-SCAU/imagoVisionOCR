@@ -47,6 +47,7 @@ def load_config(path: Path) -> dict[str, Any]:
 
 
 def build_capture(camera_cfg: dict[str, Any]) -> cv2.VideoCapture:
+    """Create and configure an OpenCV VideoCapture from camera config values."""
     pipeline = camera_cfg.get("gstreamer_pipeline")
     backend_name = str(camera_cfg.get("backend", "any")).lower()
     backend = BACKENDS.get(backend_name, cv2.CAP_ANY)
@@ -102,6 +103,7 @@ def build_rois(config: dict[str, Any]) -> list[Roi]:
 
 
 def clamp_roi(x: int, y: int, w: int, h: int, img_w: int, img_h: int) -> tuple[int, int, int, int]:
+    """Clamp ROI rectangle to image bounds while keeping width/height at least 1."""
     x = max(0, x)
     y = max(0, y)
     w = max(1, min(w, img_w - x))
@@ -110,6 +112,7 @@ def clamp_roi(x: int, y: int, w: int, h: int, img_w: int, img_h: int) -> tuple[i
 
 
 def preprocess_image(img: np.ndarray, mode: str) -> np.ndarray:
+    """Preprocess ROI for OCR using one of: none, otsu, adaptive_threshold."""
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     if mode == "none":
         return gray
@@ -122,6 +125,7 @@ def preprocess_image(img: np.ndarray, mode: str) -> np.ndarray:
 
 
 def run_ocr(img: np.ndarray, ocr_cfg: dict[str, Any]) -> str:
+    """Run Tesseract OCR with config options and return normalized single-line text."""
     psm = int(ocr_cfg.get("psm", 7))
     oem = int(ocr_cfg.get("oem", 3))
     whitelist = ocr_cfg.get("whitelist")
@@ -167,6 +171,7 @@ def process_trigger(
     rois: list[Roi],
     output_dir: Path,
 ) -> dict[str, Any]:
+    """Capture one frame, run OCR over configured ROIs, compare values, and save outputs."""
     ok, frame = capture.read()
     if not ok:
         raise RuntimeError("Failed to capture frame")
