@@ -20,6 +20,7 @@ BACKENDS: dict[str, int] = {
     "v4l2": cv2.CAP_V4L2,
     "gstreamer": cv2.CAP_GSTREAMER,
 }
+DEFAULT_MIN_INTERVAL_SECONDS = 0.01
 
 
 @dataclass
@@ -111,8 +112,9 @@ def clamp_roi(x: int, y: int, w: int, h: int, img_w: int, img_h: int) -> tuple[i
     return x, y, w, h
 
 
-def preprocess_image(img: np.ndarray, mode: str) -> np.ndarray:
+def preprocess_image(img: np.ndarray, mode: str, ocr_cfg: dict[str, Any] | None = None) -> np.ndarray:
     """Preprocess ROI for OCR using one of: none, otsu, adaptive_threshold."""
+    ocr_cfg = ocr_cfg or {}
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     if mode == "none":
         return gray
@@ -120,7 +122,13 @@ def preprocess_image(img: np.ndarray, mode: str) -> np.ndarray:
         _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         return thresh
     if mode == "adaptive_threshold":
-        return cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 8)
+        block_size = int(ocr_cfg.get("adaptive_block_size", 31))
+        block_size = block_size if block_size % 2 == 1 else block_size + 1
+        block_size = max(3, block_size)
+        c_value = float(ocr_cfg.get("adaptive_c", 8))
+        return cv2.adaptiveThreshold(
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, c_value
+        )
     return gray
 
 
@@ -131,7 +139,7 @@ def run_ocr(img: np.ndarray, ocr_cfg: dict[str, Any]) -> str:
     whitelist = ocr_cfg.get("whitelist")
     lang = ocr_cfg.get("lang", "eng")
     mode = str(ocr_cfg.get("preprocess", "adaptive_threshold"))
-    processed = preprocess_image(img, mode)
+    processed = preprocess_image(img, mode, ocr_cfg)
 
     config = f"--oem {oem} --psm {psm}"
     if whitelist:
@@ -281,12 +289,15 @@ def main() -> int:
             interval = float(trigger_cfg.get("interval_seconds", 1.0))
             while True:
                 print_result(process_trigger(capture, config, rois, remote_folder))
-                time.sleep(max(0.01, interval))
+                time.sleep(max(DEFAULT_MIN_INTERVAL_SECONDS, interval))
 
-        print("Press Enter to trigger capture, Ctrl+C to exit.")
-        while True:
-            input()
-            print_result(process_trigger(capture, config, rois, remote_folder))
+        if mode == "stdin":
+            print("Press Enter to trigger capture, Ctrl+C to exit.")
+            while True:
+                input()
+                print_result(process_trigger(capture, config, rois, remote_folder))
+
+        raise ValueError(f"Unsupported trigger mode: {mode}")
     except KeyboardInterrupt:
         return 0
     finally:

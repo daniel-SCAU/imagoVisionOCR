@@ -53,7 +53,9 @@
     "psm": 7,
     "oem": 3,
     "whitelist": "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-",
-    "preprocess": "adaptive_threshold"
+    "preprocess": "adaptive_threshold",
+    "adaptive_block_size": 31,
+    "adaptive_c": 8
   },
   "comparison": {
     "case_sensitive": false
