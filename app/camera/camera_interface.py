@@ -236,13 +236,18 @@ class CameraInterface:
             self._use_genicam = False
             self._connect_opencv()
             return
+        device_index = int(self._config.get("genicam_device_index", 0))
         try:
             self._harvester = Harvester()
             self._harvester.add_file(cti_file)
             self._harvester.update()
-            self._h_acquirer = self._harvester.create_image_acquirer(0)
+            self._h_acquirer = self._harvester.create_image_acquirer(device_index)
             self._h_acquirer.start_acquisition()
-            logger.info("GenICam/Harvester connected via CTI: %s", cti_file)
+            logger.info(
+                "GenICam/Harvester connected via CTI: %s (device_index=%d)",
+                cti_file,
+                device_index,
+            )
         except Exception as exc:
             logger.warning(
                 "Harvester connect failed (%s); falling back to OpenCV.", exc
