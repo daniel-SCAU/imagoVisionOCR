@@ -1,10 +1,12 @@
 [Unit]
 Description=XM2 Jetson OCR Inspection System
 Documentation=https://github.com/daniel-SCAU/imagoVisionOCR
-# The application runs fully offline; network-online is only required when
-# NAS sync (nas_enabled=true) is configured. Remove the After/Wants lines
-# below if no network storage is used.
+# The system runs fully offline; it starts as soon as the filesystem is ready
+# and does not block on network availability. If NAS sync (nas_enabled=true)
+# is configured, add "network-online.target" to the After= line below so the
+# service waits for the network before starting.
 After=local-fs.target
+# Soft dependency: pull in network-online if available, but do not block on it.
 Wants=network-online.target
 
 [Service]
