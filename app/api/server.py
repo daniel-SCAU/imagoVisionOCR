@@ -7,7 +7,6 @@ Endpoints:
   GET  /config           – read config
   POST /config           – update config
   GET  /results          – last N inspection results
-  GET  /roi              – deprecated debug endpoint (kept for compatibility)
 
 Run with::
 
