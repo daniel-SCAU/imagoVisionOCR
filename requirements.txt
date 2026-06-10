@@ -1,27 +1,20 @@
 # ──────────────────────────────────────────────────────────────────────────────
 # XM2 OCR Inspection System – Python dependencies
+# Target: Imago XM2 / NVIDIA Jetson Orin (ARM64, JetPack 6.x)
 # ──────────────────────────────────────────────────────────────────────────────
 # Core vision
 numpy>=1.24.0
 # NOTE: On Jetson (ARM64) do NOT install opencv-python from PyPI – the L4T
-# base image already provides a CUDA-enabled build of OpenCV.  Uncomment the
-# line below only for x86 development machines.
-# opencv-python>=4.8.0
+# base image already provides a CUDA-enabled build of OpenCV.
 
-# PyTorch – required for YOLO GPU inference and cuda availability check.
-# On Jetson use the Jetson-specific wheel provided by NVIDIA JetPack; the
-# generic PyPI wheel below is x86-only and is included for dev environments.
+# PyTorch – provided by NVIDIA JetPack on Jetson; do NOT install from PyPI.
 # Jetson wheel index: https://developer.download.nvidia.com/compute/redist/jp/
-torch>=2.0.0
 
-# Object detection (Option A – Roboflow Inference)
-# inference>=0.9.0          # uncomment if using Roboflow hosted / local runtime
+# Object detection (Option A – Roboflow Inference, local runtime)
+# inference>=0.9.0          # uncomment if using Roboflow local runtime
 
 # Object detection (Option B – Ultralytics YOLO)
 # ultralytics>=8.0.0        # uncomment if using local YOLO weights
-
-# GenICam / Harvester (optional – uncomment to enable GenICam camera support)
-# harvesters>=1.4.0
 
 # OCR (preferred)
 paddlepaddle>=2.6.0

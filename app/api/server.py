@@ -137,18 +137,3 @@ async def post_capture(include_image: bool = False) -> CaptureResponse:
 async def get_results(limit: int = 20) -> list[dict[str, Any]]:
     """Return the *limit* most recent inspection results from SQLite."""
     return get_recent_results(limit=limit)
-
-
-@app.get("/roi")
-async def get_roi_debug() -> dict[str, Any]:
-    """
-    Deprecated – kept for legacy compatibility only.
-
-    Returns the anchor/ROI from the old config format if present.
-    """
-    cfg = load_config()
-    return {
-        "deprecated": True,
-        "message": "ROI-based detection is superseded by object detection.",
-        "anchor": {"x": cfg.get("anchor_x", 0), "y": cfg.get("anchor_y", 0)},
-    }

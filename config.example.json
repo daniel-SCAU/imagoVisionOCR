@@ -5,13 +5,9 @@
   "camera_height": 1080,
   "camera_fps": 30,
   "camera_exposure": 2000,
-  "use_xm2_sdk": false,
+  "use_xm2_sdk": true,
   "warmup_frames": 5,
   "trigger_mode": false,
-
-  "use_genicam": false,
-  "genicam_cti": "/path/to/producer.cti",
-  "genicam_device_index": 0,
 
   "detection_model": "roboflow",
   "roboflow_model_path": "/path/to/local/model",

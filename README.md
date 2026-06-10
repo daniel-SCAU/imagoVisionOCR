@@ -11,7 +11,7 @@ Captures images from an industrial camera trigger, detects and normalises the pr
 ```
 app/
   camera/        CameraInterface – XM2 SDK + OpenCV/GStreamer fallback
-  detection/     ObjectDetector  – Roboflow Inference (Option A) / YOLOv8 (Option B)
+  detection/     ObjectDetector  – Roboflow Inference (local) / YOLOv8 (fallback)
   geometry/      transform       – rotation correction + perspective warp
   ocr/           OCRReader       – PaddleOCR (+ Tesseract fallback)
   validation/    rules           – exact match + regex validation engine
@@ -42,7 +42,7 @@ Trigger Event
 ## Requirements
 
 - Python 3.10+
-- NVIDIA Jetson (ARM64) with JetPack 5.x recommended for GPU OCR
+- NVIDIA Jetson Orin (ARM64) with JetPack 6.x and CUDA
 - Camera accessible via XM2 SDK, V4L2 (`/dev/video*`), or GStreamer pipeline
 
 ---
@@ -97,7 +97,6 @@ python app/main.py --config config.json
 | GET    | `/config`   | Read current config                      |
 | POST   | `/config`   | Update config (persisted to SQLite)      |
 | GET    | `/results`  | Last N inspection results                |
-| GET    | `/roi`      | Deprecated (debug only)                  |
 
 ---
 
@@ -112,7 +111,7 @@ Key fields in `config.json` / SQLite:
 | `roboflow_project`     | `""`             | Roboflow project slug (fallback to local cache) |
 | `yolo_weights`         | `"yolov8n.pt"`   | Path or model name for local YOLO             |
 | `confidence_threshold` | `0.5`            | Minimum detection confidence                  |
-| `ocr_engine`           | `"paddleocr"`    | `"paddleocr"` or `"tesseract"`                |
+| `ocr_engine`           | `"paddleocr"`    | `"paddleocr"` (GPU) or `"tesseract"` (fallback) |
 | `camera_exposure`      | `2000`           | Exposure in µs (XM2 SDK) or OpenCV units      |
 | `validation_rules`     | `"{}"`           | JSON string of field → expected/regex pattern |
 | `storage_path`         | `"./archive"`    | Local archive root directory                  |
@@ -164,8 +163,3 @@ JSON metadata example:
 }
 ```
 
----
-
-## Legacy compatibility
-
-The original single-file `imago_vision_ocr_app.py` (fixed-ROI, Tesseract) is retained for reference. All new deployments should use `app/main.py`.
