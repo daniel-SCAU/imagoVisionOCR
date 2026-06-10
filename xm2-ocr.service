@@ -1,0 +1,35 @@
+[Unit]
+Description=XM2 Jetson OCR Inspection System
+Documentation=https://github.com/daniel-SCAU/imagoVisionOCR
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=jetson
+Group=jetson
+WorkingDirectory=/opt/xm2-ocr
+ExecStart=/usr/bin/python3 /opt/xm2-ocr/app/main.py \
+    --config /opt/xm2-ocr/config/config.json \
+    --loop \
+    --interval 1.0 \
+    --api-port 8000 \
+    --ui-port 8080
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+
+# Allow GPU access
+SupplementaryGroups=video render
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=xm2-ocr
+
+# Resource limits (adjust to Jetson hardware)
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

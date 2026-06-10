@@ -1,72 +1,171 @@
 # imagoVisionOCR
 
-Trigger-based OCR capture application for an Imago XM2 camera on Jetson Orin Super 16GB.
+Production-grade edge AI OCR inspection system running on an **Imago XM2 (NVIDIA Jetson)**.
 
-## Features
+Captures images from an industrial camera trigger, detects and normalises the print area geometry, performs OCR, validates extracted text against configurable rules, archives results, and exposes a live web UI.
 
-- Capture image on trigger (`once`, `stdin`, or timed interval).
-- ROI cropping with configurable **anchor point**.
-- OCR extraction using Tesseract.
-- Compare extracted text with configured variables/expected values.
-- Save full image (and optional ROI crops/reports) to a remote folder path.
-- Configurable camera settings to improve image clarity.
+---
 
-## Prerequisites
+## Architecture
+
+```
+app/
+  camera/        CameraInterface – XM2 SDK + OpenCV/GStreamer fallback
+  detection/     ObjectDetector  – Roboflow Inference (Option A) / YOLOv8 (Option B)
+  geometry/      transform       – rotation correction + perspective warp
+  ocr/           OCRReader       – PaddleOCR (+ Tesseract fallback)
+  validation/    rules           – exact match + regex validation engine
+  storage/       ArchiveManager  – dated local archive + optional SMB/NFS sync
+  api/           FastAPI service – /capture /status /config /results
+  ui/            NiceGUI         – live feed, OCR result, PASS/FAIL, config panel
+  config/        settings        – SQLite-backed config + result store
+  pipeline.py    Orchestrator    – wires all modules together
+  main.py        Entry point
+```
+
+**Runtime flow:**
+
+```
+Trigger Event
+  → capture_frame()
+  → detect_objects(frame)          ← YOLO / Roboflow (no fixed ROI)
+  → select print_area
+  → normalize_print_area()         ← rotation + perspective correction
+  → extract_text()                 ← PaddleOCR on normalised crop
+  → validate_text()                ← exact / regex rules
+  → archive.save()                 ← YYYY/MM/DD/ dated tree + optional NAS
+  → db.save_result()               ← SQLite
+```
+
+---
+
+## Requirements
 
 - Python 3.10+
-- Tesseract OCR engine installed on device
-- Camera available through OpenCV (`/dev/video*` or GStreamer pipeline)
-- Remote folder mounted and writable on the Jetson (for example via NFS/SMB mount)
+- NVIDIA Jetson (ARM64) with JetPack 5.x recommended for GPU OCR
+- Camera accessible via XM2 SDK, V4L2 (`/dev/video*`), or GStreamer pipeline
 
-## Install
+---
+
+## Installation
 
 ```bash
+# Clone
+git clone https://github.com/daniel-SCAU/imagoVisionOCR
+cd imagoVisionOCR
+
+# Install dependencies
 pip install -r requirements.txt
-```
 
-## Configuration
-
-Copy and edit the example configuration:
-
-```bash
+# Copy example config
 cp config.example.json config.json
+# Edit config.json — set detection credentials, storage path, validation rules
 ```
 
-Important fields:
+For **Roboflow** detection, set `roboflow_api_key` and `roboflow_project` in `config.json`.
+For **local YOLO**, set `detection_model` to `"yolo"` and provide `yolo_weights`.
 
-- `anchor`: base point used to offset all ROI boxes.
-- `rois`: each ROI has offsets and size, plus either:
-  - `variable`: key looked up in `variables`, or
-  - `expected_values`: explicit list of accepted values.
-- `storage.remote_folder`: mounted remote destination for images/results.
-- `camera.settings`: optional OpenCV capture properties (focus, exposure, gain, etc.).
+---
 
 ## Run
 
-One-shot trigger:
-
+### Single capture
 ```bash
-python imago_vision_ocr_app.py --config config.json --once
+python app/main.py --config config.json --once
 ```
 
-Interactive trigger (press Enter each capture):
-
+### Continuous loop (every 1 s)
 ```bash
-python imago_vision_ocr_app.py --config config.json
+python app/main.py --config config.json --loop --interval 1.0
 ```
 
-Timed trigger:
-
+### API + UI only (trigger via HTTP POST)
 ```bash
-python imago_vision_ocr_app.py --config config.json --interval 2.0
+python app/main.py --config config.json
+# API:  http://localhost:8000
+# UI:   http://localhost:8080
 ```
 
-## Output
+---
 
-For each trigger, the app writes to `storage.remote_folder`:
+## API Endpoints
 
-- Full captured image (`capture_<timestamp>.jpg`)
-- Optional ROI crops (`roi_<name>_<timestamp>.jpg`)
-- Optional OCR comparison report (`report_<timestamp>.json`)
+| Method | Path        | Description                              |
+|--------|-------------|------------------------------------------|
+| POST   | `/capture`  | Trigger one inspection cycle             |
+| GET    | `/status`   | System status + last result              |
+| GET    | `/config`   | Read current config                      |
+| POST   | `/config`   | Update config (persisted to SQLite)      |
+| GET    | `/results`  | Last N inspection results                |
+| GET    | `/roi`      | Deprecated (debug only)                  |
 
-It also prints OCR and comparison status to stdout.
+---
+
+## Configuration
+
+Key fields in `config.json` / SQLite:
+
+| Key                    | Default          | Description                                   |
+|------------------------|------------------|-----------------------------------------------|
+| `detection_model`      | `"roboflow"`     | `"roboflow"` or `"yolo"`                      |
+| `roboflow_api_key`     | `""`             | Roboflow API key                              |
+| `roboflow_project`     | `""`             | Roboflow project slug                         |
+| `yolo_weights`         | `"yolov8n.pt"`   | Path or model name for local YOLO             |
+| `confidence_threshold` | `0.5`            | Minimum detection confidence                  |
+| `ocr_engine`           | `"paddleocr"`    | `"paddleocr"` or `"tesseract"`                |
+| `camera_exposure`      | `2000`           | Exposure in µs (XM2 SDK) or OpenCV units      |
+| `validation_rules`     | `"{}"`           | JSON string of field → expected/regex pattern |
+| `storage_path`         | `"./archive"`    | Local archive root directory                  |
+| `nas_enabled`          | `false`          | Enable NAS sync                               |
+| `nas_path`             | `"//nas/ocr"`    | UNC path or mount point                       |
+
+---
+
+## Docker Deployment (Jetson ARM64)
+
+```bash
+# Build and run
+docker compose up --build -d
+
+# Logs
+docker compose logs -f xm2-ocr
+```
+
+---
+
+## systemd Service
+
+```bash
+sudo cp xm2-ocr.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now xm2-ocr
+sudo journalctl -fu xm2-ocr
+```
+
+---
+
+## Output Archive Structure
+
+```
+archive/
+  2024/06/15/
+    image_20240615_143022_000000_PASS.jpg
+    image_20240615_143022_000000_PASS.json
+```
+
+JSON metadata example:
+```json
+{
+  "timestamp": "2024-06-15T14:30:22.000000+00:00",
+  "ocr_text": "LOT240615A",
+  "validation_result": "PASS",
+  "bbox": {"x": 420, "y": 310, "w": 200, "h": 50},
+  "reason": "All rules matched"
+}
+```
+
+---
+
+## Legacy compatibility
+
+The original single-file `imago_vision_ocr_app.py` (fixed-ROI, Tesseract) is retained for reference. All new deployments should use `app/main.py`.

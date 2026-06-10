@@ -1,3 +1,33 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# XM2 OCR Inspection System – Python dependencies
+# ──────────────────────────────────────────────────────────────────────────────
+# Core vision
 numpy>=1.24.0
 opencv-python>=4.8.0
+
+# Object detection (Option A – Roboflow Inference)
+# inference>=0.9.0          # uncomment if using Roboflow hosted / local runtime
+
+# Object detection (Option B – Ultralytics YOLO)
+# ultralytics>=8.0.0        # uncomment if using local YOLO weights
+
+# OCR (preferred)
+paddlepaddle>=2.6.0
+paddleocr>=2.7.0
+
+# OCR (fallback)
 pytesseract>=0.3.10
+
+# API
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.0.0
+
+# UI
+nicegui>=1.4.0
+
+# Storage (SMB/NFS optional)
+smbprotocol>=1.12.0
+
+# Utilities
+python-multipart>=0.0.9

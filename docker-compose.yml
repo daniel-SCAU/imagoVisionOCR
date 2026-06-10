@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  xm2-ocr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        L4T_VERSION: "r35.4.1"
+    image: xm2-ocr:latest
+    container_name: xm2-ocr
+    restart: unless-stopped
+
+    # GPU access on Jetson
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+
+    # Expose camera device (V4L2 or USB camera)
+    devices:
+      - /dev/video0:/dev/video0
+
+    ports:
+      - "8000:8000"   # FastAPI inspection API
+      - "8080:8080"   # NiceGUI web UI
+
+    volumes:
+      - ./archive:/archive           # local inspection archive
+      - ./config:/config             # JSON config overrides
+      - /mnt/nas:/mnt/nas:shared     # optional NAS mount (pre-mount on host)
+
+    command:
+      - "--loop"
+      - "--interval"
+      - "1.0"
+      - "--api-port"
+      - "8000"
+      - "--ui-port"
+      - "8080"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/status"]
+      interval: 30s
+      timeout: 10s
+      start_period: 45s
+      retries: 3
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"

@@ -1,70 +1,33 @@
 {
-  "camera": {
-    "source": 0,
-    "backend": "any",
-    "width": 1920,
-    "height": 1080,
-    "fps": 30,
-    "settings": {
-      "auto_exposure": 1,
-      "exposure": -6,
-      "focus": 20,
-      "gain": 0,
-      "brightness": 0,
-      "contrast": 32,
-      "sharpness": 3
-    }
-  },
-  "trigger": {
-    "mode": "stdin",
-    "interval_seconds": 1.0
-  },
-  "runtime": {
-    "warmup_frames": 5
-  },
-  "anchor": {
-    "x": 100,
-    "y": 150
-  },
-  "variables": {
-    "serial_code": "ABC12345",
-    "batch_code": "BATCH-77"
-  },
-  "rois": [
-    {
-      "name": "serial_code",
-      "x_offset": 0,
-      "y_offset": 0,
-      "width": 360,
-      "height": 80,
-      "variable": "serial_code"
-    },
-    {
-      "name": "batch_code",
-      "x_offset": 0,
-      "y_offset": 90,
-      "width": 300,
-      "height": 70,
-      "variable": "batch_code"
-    }
-  ],
-  "ocr": {
-    "lang": "eng",
-    "psm": 7,
-    "oem": 3,
-    "whitelist": "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-",
-    "preprocess": "adaptive_threshold",
-    "adaptive_block_size": 31,
-    "adaptive_c": 8
-  },
-  "comparison": {
-    "case_sensitive": false
-  },
-  "storage": {
-    "remote_folder": "/mnt/remote/vision_ocr",
-    "image_format": "jpg",
-    "jpeg_quality": 95,
-    "save_roi_images": true,
-    "save_report": true
-  }
+  "camera_source": 0,
+  "camera_backend": "any",
+  "camera_width": 1920,
+  "camera_height": 1080,
+  "camera_fps": 30,
+  "camera_exposure": 2000,
+  "use_xm2_sdk": false,
+  "warmup_frames": 5,
+  "trigger_mode": false,
+
+  "detection_model": "roboflow",
+  "roboflow_api_key": "YOUR_API_KEY",
+  "roboflow_project": "YOUR_PROJECT_ID",
+  "roboflow_version": 1,
+  "yolo_weights": "yolov8n.pt",
+  "confidence_threshold": 0.5,
+
+  "ocr_engine": "paddleocr",
+  "ocr_lang": "en",
+  "ocr_use_gpu": true,
+
+  "validation_rules": "{\"lot_number\": \"LOT\\\\d{6}[A-Z]\", \"expiry\": \"\\\\d{4}-\\\\d{2}-\\\\d{2}\"}",
+
+  "storage_path": "./archive",
+  "image_format": "jpg",
+  "jpeg_quality": 95,
+  "nas_enabled": false,
+  "nas_path": "//nas/ocr",
+  "nas_username": "",
+
+  "gstreamer_pipeline": ""
 }
