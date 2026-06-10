@@ -62,7 +62,7 @@ cp config.example.json config.json
 # Edit config.json — set detection credentials, storage path, validation rules
 ```
 
-For **Roboflow** detection, set `roboflow_api_key` and `roboflow_project` in `config.json`.
+For **Roboflow** local detection, set `roboflow_model_path` to the path of your local model files in `config.json`.
 For **local YOLO**, set `detection_model` to `"yolo"` and provide `yolo_weights`.
 
 ---
@@ -108,8 +108,8 @@ Key fields in `config.json` / SQLite:
 | Key                    | Default          | Description                                   |
 |------------------------|------------------|-----------------------------------------------|
 | `detection_model`      | `"roboflow"`     | `"roboflow"` or `"yolo"`                      |
-| `roboflow_api_key`     | `""`             | Roboflow API key                              |
-| `roboflow_project`     | `""`             | Roboflow project slug                         |
+| `roboflow_model_path`  | `""`             | Path to local Roboflow model files            |
+| `roboflow_project`     | `""`             | Roboflow project slug (fallback to local cache) |
 | `yolo_weights`         | `"yolov8n.pt"`   | Path or model name for local YOLO             |
 | `confidence_threshold` | `0.5`            | Minimum detection confidence                  |
 | `ocr_engine`           | `"paddleocr"`    | `"paddleocr"` or `"tesseract"`                |
